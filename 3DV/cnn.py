@@ -6,9 +6,26 @@ import numpy as np
 import random
 import cv2
 import Model_obj
+from torchvision import transforms
 
 
 CNN_OBJ_MAXINPUT = 100.0
+
+
+def Transform_OBJ():
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    ])
+    return transform
+
+
+def Transform_SCORE():
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])
+    ])
+    return transform
 
 
 def containsNaNs(m):
@@ -139,7 +156,8 @@ def getCoordImg(colorData, sampling, patchsize, model):
 
     # Do prediction
     patches = np.array(patches)
-    prediction = Model_obj.forward(model, patches)
+    transform = Transform_OBJ()
+    prediction = Model_obj.forward(model, patches, transform)
     for i in range(np.shape(prediction)[0]):
         x = int(i % np.shape(modeImg)[1])
         y = int(i / np.shape(modeImg)[0])
