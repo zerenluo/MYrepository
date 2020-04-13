@@ -28,3 +28,38 @@
 # #     batchData = data[permutation[offset]:permutation[offset + size], :, :, :]
 # #     batchLabels = label[permutation[offset]:permutation[offset + size], :]
 # #     return batchData, batchLabels
+
+# def assembleData(imageCount, hypsPerImage, objInputSize, rgbInputSize, dataset, model, temperature):
+#     data = []
+#     label = []
+#     gp = properties.GlobalProperties()
+#     camMat = gp.getCamMat()
+#     for i in range(imageCount):
+#         imgIdx = np.random.randint(0, dataset.size())
+#         imgBGR = dataset.getBGR(imgIdx)
+#         info = dataset.getInfo(imgIdx)
+#         sampling = cnn.stochasticSubSample(imgBGR, objInputSize, rgbInputSize)
+#         # Through the trained network, get the estimated object coordinate
+#         estObj = cnn.getCoordImg(imgBGR, sampling, rgbInputSize, model)
+#         poseGT = Hypothesis.Hypothesis()
+#         poseGT.Info(info)
+#         for h in range(hypsPerImage):
+#             driftLevel = np.random.randint(0, 3)
+#             if not driftLevel:
+#                 poseNoise = poseGT * getRandHyp(2, 2)
+#             else:
+#                 poseNoise = poseGT * getRandHyp(10, 100)
+#             # Construct data and label
+#             # input: reprojection error image
+#             data.append(cnn.getDiffMap(TYPE.our2cv([poseNoise.getRotation(), poseNoise.getTranslation()]),
+#                                        estObj, sampling, camMat))
+#             label.append(-1 * temperature * max(poseGT.calcAngularDistance(poseNoise),
+#                                                np.linalg.norm(poseGT.getTranslation() - poseNoise.getTranslation())))
+#     data = np.array(data)
+#     label = np.array(label)
+#     return data, label
+#
+# def assembleBatch(offset, size, permutation, data, label):
+#     batchData = data[permutation[offset]:permutation[offset + size], :, :, :]
+#     batchLabels = label[permutation[offset]:permutation[offset + size], :]
+#     return batchData, batchLabels
