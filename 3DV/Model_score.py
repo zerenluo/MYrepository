@@ -58,31 +58,28 @@ class SCORE_CNN(nn.Module):
         return x
 
 
-def train(model, data, label, optimizer, num, device):
-    # from numpy to tensor
-    mean = 45
-    data = torch.from_numpy(np.transpose(data, (0, 3, 1, 2))) - mean
-    label = torch.from_numpy(label)
-    data = data.to(device)
-    label = label.to(device)
+def train(model, train_loader, device, lossfunc, optimizer, batchsize, num):
+    for idx, (BatchData, BatchLabel) in enumerate(train_loader):
+        BatchData, BatchLabel, lossfunc = BatchData.to(device), BatchLabel.to(device), lossfunc.to(device)
+        # Forward
+        pred = model(BatchData)
+        loss = lossfunc(pred, BatchLabel)/batchsize
+        # Backward
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        num += 1
+        # num counter
+        if not num % storeIntervalPre:
+            torch.save(model.state_dict(), './Model parameter/score_model_init.pkl')
+        if not num % lrIntervalPre:
+            for param in optimizer.param_groups:
+                param['lr'] *= 0.5
+    return loss, num
 
-    # set training mode
-    model.train()
 
-    # calculate prediction and loss
-    criterion_loss = nn.PairwiseDistance(p=1).to(device)
-    pred = model(data)
-    loss = criterion_loss(pred, label)
-    loss = loss / label.size()[0]
-    loss.backward()
-
-    # optimize
-    optimizer.step()
-
-    # num counter
-    if not num % storeIntervalPre:
-        torch.save(model.state_dict(), './Model parameter/obj_model_init.pkl')
-    if not num % lrIntervalPre:
-        for param in optimizer.param_groups:
-            param['lrInitPre'] *= 0.5
-    return loss
+def forward(model, data, transform):
+    # From numpy to tensor
+    data_tensor = transform(data)
+    pred = model(data_tensor)
+    return pred.numpy()
