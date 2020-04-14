@@ -63,3 +63,21 @@
 #     batchData = data[permutation[offset]:permutation[offset + size], :, :, :]
 #     batchLabels = label[permutation[offset]:permutation[offset + size], :]
 #     return batchData, batchLabels
+
+# patches = []
+# transform = Transform_OBJ()
+# modeImg = np.zeros([np.shape(sampling)[0], np.shape(sampling)[1], 3])
+# width = np.shape(colorData)[1]
+# height = np.shape(colorData)[0]
+# for x in range(np.shape(modeImg)[1]):
+#     for y in range(np.shape(modeImg)[0]):
+#         origX = sampling[y][x][0]
+#         origY = sampling[y][x][1]
+#         if origX < patchsize/2 or origY < patchsize/2 or origX > width-patchsize/2 or origY > height-patchsize/2:
+#             continue
+#         minX = int(origX - patchsize/2)
+#         minY = int(origY - patchsize/2)
+#         maxX = int(origX + patchsize/2)
+#         maxY = int(origY + patchsize/2)
+#         patch = colorData[minY:maxY, minX:maxX, :]
+#         patches.append(transform(patch))

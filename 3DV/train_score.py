@@ -47,7 +47,8 @@ if __name__ == '__main__':
     trainingDataset = dataset.Dataset()
     trainingDataset.readFileNames(trainingSets[0])
     trainingDataset.SetObjID(1)
-    TrainData = SCORE_DATASET(trainingDataset, CNN_OBJ_PATCHSIZE, CNN_RGB_PATCHSIZE, RGB_NET, objTemperature, transform)
+    TrainData = SCORE_DATASET(trainingDataset, objInputSize=CNN_OBJ_PATCHSIZE, rgbInputSize=CNN_RGB_PATCHSIZE,
+                              model=RGB_NET, temperature=objTemperature, transform=transform)
 
     # Construct SCORE CNN network
     SCORE_NET = SCORE_CNN()
@@ -77,6 +78,7 @@ if __name__ == '__main__':
         time_end = time.time()
         print(loss)
         print('Time Cost:', time_end - time_start)
+
 
 
 

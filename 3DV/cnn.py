@@ -7,9 +7,13 @@ import random
 import cv2
 import Model_obj
 from torchvision import transforms
+import torch
+import Customized_Datasets
 
 
 CNN_OBJ_MAXINPUT = 100.0
+BATCHSIZE = 64
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def Transform_OBJ():
@@ -137,55 +141,44 @@ def getMed(mat):
 
 
 def getCoordImg(colorData, sampling, patchsize, model):
-    patches = []
-    modeImg = np.zeros([np.shape(sampling)[0], np.shape(sampling)[1], 3])
-    width = np.shape(colorData)[1]
-    height = np.shape(colorData)[0]
-    for x in range(np.shape(modeImg)[1]):
-        for y in range(np.shape(modeImg)[0]):
-            origX = sampling[y][x][0]
-            origY = sampling[y][x][1]
-            if origX < patchsize/2 or origY < patchsize/2 or origX > width-patchsize/2 or origY > height-patchsize/2:
-                continue
-            minX = int(origX - patchsize/2)
-            minY = int(origY - patchsize/2)
-            maxX = int(origX + patchsize/2)
-            maxY = int(origY + patchsize/2)
-            patch = colorData[minY:int(maxY+1), minX:int(maxX+1), :]
-            patches.append(patch)
-
-    # Do prediction
-    patches = np.array(patches)
     transform = Transform_OBJ()
-    prediction = Model_obj.forward(model, patches, transform)
-    for i in range(np.shape(prediction)[0]):
-        x = int(i % np.shape(modeImg)[1])
-        y = int(i / np.shape(modeImg)[0])
-        modeImg[y, x, :] = prediction[i, :]
+    DATA = Customized_Datasets.GetCoorData(sampling=sampling, patchsize=patchsize,
+                                              colorData=colorData, transform=transform)
+    data_loader = torch.utils.data.DataLoader(DATA, batch_size=BATCHSIZE, shuffle=False)
+    for idx, (BatchData) in enumerate(data_loader):
+        BatchData = BatchData.to(DEVICE)
+        pred = Model_obj.forward(model, BatchData, DEVICE)
+        if not idx:
+            patch = pred
+        else:
+            patch = np.vstack((patch, pred))
+    (width, height) = np.shape(sampling[:, :, 0])
+    modeImg = patch.reshape([height, width, 3])
     return modeImg
 
 
 def stochasticSubSample(inputMap, targetsize, patchsize):
     width = np.shape(inputMap)[1]
     height = np.shape(inputMap)[0]
-    sampling = np.zeros(targetsize, targetsize, 2)
+    sampling = np.zeros([targetsize, targetsize, 2])
     xStride = (width - patchsize)/targetsize
     yStride = (height - patchsize)/targetsize
-    xrange = np.zeros(targetsize)
-    yrange = np.zeros(targetsize)
+    xrange = np.zeros(targetsize + 1)
+    yrange = np.zeros(targetsize + 1)
     for i in range(targetsize + 1):
         xrange[i] = patchsize/2 + i * xStride
         yrange[i] = patchsize/2 + i * yStride
-    for x in range(targetsize):
-        for y in range(targetsize):
-            # using np.random.random() to substitute drand() temporarily
-            sampling[y, x, 0] = int(xrange[i] + (xrange[i + 1]-xrange[i])*np.random.random())
-            sampling[y, x, 1] = int(yrange[i] + (yrange[i + 1]-yrange[i])*np.random.random())
+    for i in range(targetsize):
+        for x in range(targetsize):
+            for y in range(targetsize):
+                # using np.random.random() to substitute drand() temporarily
+                sampling[y, x, 0] = int(xrange[i] + (xrange[i + 1]-xrange[i])*np.random.random())
+                sampling[y, x, 1] = int(yrange[i] + (yrange[i + 1]-yrange[i])*np.random.random())
     return sampling
 
 
 def getDiffMap(hyp, objectCoordinates, sampling, camMat):
-    diffMap = np.zeros(np.shape(sampling))
+    diffMap = np.zeros(np.shape(sampling[:, :, 0]))
     points3D = []
     points2D = []
     source2D = []
@@ -195,7 +188,8 @@ def getDiffMap(hyp, objectCoordinates, sampling, camMat):
             points2D.append(sampling[y, x, :])
             source2D.append(np.array([x, y]))
     points3D_np = np.array(points3D)
-    projections, _ = cv2.projectPoints(points3D_np, hyp[0], hyp[1], camMat, None)
+    camMat_float = camMat.astype(np.float)
+    projections, _ = cv2.projectPoints(points3D_np, hyp[0], hyp[1], camMat_float, None)
     for i in range(len(projections)):
         curPt = points2D[i] - projections[i, :, :].reshape(2)
         diffMap[source2D[i][1]][source2D[i][0]] = min(np.linalg.norm(curPt), CNN_OBJ_MAXINPUT)

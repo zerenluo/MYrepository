@@ -194,42 +194,114 @@ import dataset
 import read_data
 from pathos.multiprocessing import ProcessingPool as newpool
 import multiprocessing as mp
+from torchvision import transforms
+import matplotlib.pyplot as plt
+#
+# plt.ion()
+# plt.figure(1)
+# x = []
+# y = []
+#
+# for i in range(50):
+#     plt.plot(i*0.1, i*0.1, '-r')
+#     plt.draw()
+#     plt.pause(0.01)
+# transform = transforms.Compose([
+#     transforms.ToTensor(),
+#     transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+# ])
+#
+# Data = dataset.Dataset()
+# dataDir = './'
+# trainingDir = dataDir + 'training/'
+# trainingSets = util.getSubPaths(trainingDir)
+# Data.readFileNames(trainingSets[0])
+# imgBGR = Data.getBGR(2)
+# inputSize = 42
+# width = np.size(imgBGR, 0)
+# height = np.size(imgBGR, 1)
+# print(height)
+# x = np.random.randint(inputSize / 2, width - inputSize / 2)
+# y = np.random.randint(inputSize / 2, height - inputSize / 2)
+# data = imgBGR[int(y - inputSize/2): int(y + inputSize/2),
+#                int(x - inputSize/2): int(x + inputSize/2), :]
+# data = transform(data)
+#
+# print(data.shape)
+
+import re
+import matplotlib.pyplot as plt
+
+# file = open('./Model parameter/training_loss_obj.txt')
+# loss = []
+# keyword = 'Training Loss'
+# lines = file.readlines()
+# for line in lines:
+#     if keyword in line:
+#         loss.append(float(re.findall(r'\d+\.?\d*', line)[0]))
+#
+# round = list(range(1, 377))
+# plt.figure(1)
+# plt.plot(round, loss, '-r')
+# # plt.show()
+# plt.savefig('./Model parameter/TrainLoss_obj.png')
+
+# transform = transforms.Compose([
+#     transforms.ToTensor(),
+#     transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+# ])
+
+# a = torch.FloatTensor([[3, 2, 1], [6, 5, 4]]).unsqueeze(0)
+# # a = torch.empty([2, 3])
+# b = torch.FloatTensor([[1, 2, 3], [4, 5, 6]]).unsqueeze(0)
+# d = torch.FloatTensor([[2, 2, 2], [3, 3, 3]]).unsqueeze(0)
+# c = torch.cat((a, b), 0)
+# e = torch.cat((c, d), 0)
+# print(e.shape)
+# print(e)
+from torch.utils.data import Dataset
+import torch.nn as nn
+
+data = [1, 2, 3, 4, 5, 6]
+label = [1, 2, 3, 4, 5, 6]
 
 
-def get_xy(width, height):
-    x = np.array(range(width * height)) % width
-    y = np.array(range(width * height)) // width
-    return x, y
+class test_model(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+        self.FC = nn.Linear(in_features=1, out_features=1)
+
+    def forward(self, x):
+        x = self.FC(x)
+        return x
 
 
-if __name__ == '__main__':
-    time_start = time.time()
-    i = 2
-    data = dataset.Dataset()
-    basepath = '/home/open/eth/2020spring/3DV/Project/Python/training/scene'
-    data.readFileNames(basepath)
-    img = read_data.readData_depth(basepath)
-    time0 = time.time()
-    print(time0 - time_start)
-    imgDepth = data.getDepth(i)
-    width = np.size(imgDepth, 0)
-    height = np.size(imgDepth, 1)
-    time1 = time.time()
-    print(time1 - time_start)
-    imgDepth_fla = imgDepth.flatten()
-    time2 = time.time()
-    print(time2 - time1)
-    x, y = get_xy(width, height)
-    time_end = time.time()
-    print(time_end - time2)
-    pool = newpool(mp.cpu_count())
-    img = list(pool.map(dataset.pxToEye, x, y, imgDepth_fla))
-    time3 = time.time()
-    print(time3 - time_start)
+class test(Dataset):
+    def __init__(self, datalist, labellist):
+        self.datalist = datalist
+        self.labellist = labellist
+
+    def __len__(self):
+        return 6
+
+    def __getitem__(self, item):
+        data = self.datalist[item]
+        return data
 
 
+# mydata = test(data, label)
+# model = test_model()
+# data_loader = torch.utils.data.DataLoader(mydata, batch_size=2, shuffle=False)
+# for idx, (BatchData) in enumerate(data_loader):
+# #     print(model(BatchData))
+#
+# a = np.zeros([2, 3, 2])
+# (h, w) = a[1, 1, :]
 
-
+a = np.arange(18).reshape([6, 3])
+b = a.reshape([2, 3, 3])
+print(b[0, 1, :])
 
 
 

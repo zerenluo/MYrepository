@@ -64,29 +64,52 @@ def criterion_loss(pred, label):
 
 
 def train(model, train_loader, optimizer, num, device):
+    model.train()
     for idx, (BatchData, BatchLabel) in enumerate(train_loader):
         BatchData, BatchLabel = BatchData.to(device), BatchLabel.to(device)
+        print('BatchData', BatchData.shape)
         # calculate prediction and loss
         pred = model(BatchData)
         loss = criterion_loss(pred, BatchLabel)
-        loss.backward()
         # optimize
+        optimizer.zero_grad()
+        loss.backward()
         optimizer.step()
         # num counter
-    if not num % storeIntervalPre:
-        torch.save(model.state_dict(), './Model parameter/obj_model_init.pkl')
-    if not num % lrInterval:
-        for param in optimizer.param_groups:
-            param['lrInitPre'] *= 0.5
-    return loss
+        num += 1
+        if not num % storeIntervalPre:
+            torch.save(model.state_dict(), './Model parameter/obj_model_init.pkl')
+        if not num % lrInterval:
+            for param in optimizer.param_groups:
+                param['lr'] *= 0.5
+        if not num % 100: print('Train Loss:', loss.item())
+    return loss, num
 
 
-def forward(model, data):
+def test(model, test_loader, device, num):
+    model.eval()
+    test_loss = 0
+    for idx, (BatchData, BatchLabel) in enumerate(test_loader):
+        BatchData, BatchLabel = BatchData.to(device), BatchLabel.to(device)
+        pred = model(BatchData)
+        loss = criterion_loss(pred, BatchLabel)
+        test_loss += loss.item()
+        num += 1
+        if not num % 100: print('Test Loss:', loss.item())
+    return loss, num
+
+
+def forward(model, data, device):
     # From numpy to tensor
-    mean = 127
-    data = torch.from_numpy(np.transpose(data, (0, 3, 1, 2))) - mean
-    pred = model(data)
-    return pred.numpy()
+    model.to(device)
+    pred = model(data).cpu()
+    return pred.detach().numpy()
+
+
+def weight_init(model):
+    if isinstance(model, nn.Conv2d):
+        torch.nn.init.xavier_uniform(model.weight.data)
+        torch.nn.init.xavier_uniform(model.bias.data)
 
 
 

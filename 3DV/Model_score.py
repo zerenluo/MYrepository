@@ -59,17 +59,20 @@ class SCORE_CNN(nn.Module):
 
 
 def train(model, train_loader, device, lossfunc, optimizer, batchsize, num):
+    model.to(device)
     for idx, (BatchData, BatchLabel) in enumerate(train_loader):
-        BatchData, BatchLabel, lossfunc = BatchData.to(device), BatchLabel.to(device), lossfunc.to(device)
+        BatchData, BatchLabel, lossfunc = BatchData.to(device, dtype=torch.float), \
+                                          BatchLabel.to(device, dtype=torch.float), lossfunc.to(device)
         # Forward
         pred = model(BatchData)
-        loss = lossfunc(pred, BatchLabel)/batchsize
+        loss = torch.mean(lossfunc(pred, BatchLabel))
         # Backward
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         num += 1
         # num counter
+        if not (idx + 1)  % 10: print('idx', idx)
         if not num % storeIntervalPre:
             torch.save(model.state_dict(), './Model parameter/score_model_init.pkl')
         if not num % lrIntervalPre:

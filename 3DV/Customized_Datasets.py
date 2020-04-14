@@ -12,26 +12,44 @@ class RGB_DATASET(Dataset):
     def __init__(self, dataset, inputSize, transform):
         self.dataset = dataset
         self.inputSize = inputSize
-        self.imgIdx = np.random.randint(0, dataset.size())
-        self.imgBGR = dataset.getBGR(self.imgIdx)
-        self.imgObj = dataset.getObj(self.imgIdx)
         self.transform = transform
 
     def __len__(self):
-        return 51200
+        return 64
 
     def __getitem__(self, item):
-
-        width = np.size(self.imgBGR, 0)
-        height = np.size(self.imgBGR, 1)
+        imgIdx = np.random.randint(0, self.dataset.size())
+        imgBGR = self.dataset.getBGR(imgIdx)
+        imgObj = self.dataset.getObj(imgIdx)
+        width = np.size(imgBGR, 1)
+        height = np.size(imgBGR, 0)
         x = np.random.randint(self.inputSize / 2, width - self.inputSize / 2)
         y = np.random.randint(self.inputSize / 2, height - self.inputSize / 2)
-        data = self.imgBGR[int(y - self.inputSize/2): int(y + self.inputSize/2),
+        data = imgBGR[int(y - self.inputSize/2): int(y + self.inputSize/2),
                int(x - self.inputSize/2): int(x + self.inputSize/2), :]
-        data_trans = np.transpose(data, (2, 0, 1))
-        img = self.transform(data_trans)
-        label = self.imgObj[y, x]/1000.0
+        img = self.transform(data)
+        label = imgObj[y, x]/1000.0
         return img, label
+
+
+class GetCoorData(Dataset):
+    def __init__(self, sampling, patchsize, colorData, transform):
+        self.patchsize = patchsize
+        self.sampling = sampling
+        self.colorData = colorData
+        self.transform = transform
+
+    def __len__(self):
+        return np.size(self.sampling, 0)**2
+
+    def __getitem__(self, item):
+        (width_samp, height_samp) = np.shape(self.sampling[:, :, 0])
+        x_samp, y_samp = int(item % width_samp), int(item // width_samp)
+        (origX, origY) = self.sampling[y_samp, x_samp, :]
+        data = self.colorData[int(origY - self.patchsize/2):int(origY + self.patchsize/2),
+               int(origX - self.patchsize/2):int(origX + self.patchsize/2), :]
+        data_tensor = self.transform(data)
+        return data_tensor
 
 
 # Function for SCORE DATASET
@@ -49,6 +67,7 @@ def getRandHyp(gaussRot, gaussTrans):
     h.RodvecandTrans(RotVec)
     return h
 
+
 class SCORE_DATASET(Dataset):
     def __init__(self, dataset, objInputSize, rgbInputSize, model, temperature, transform):
         self.dataset = dataset
@@ -59,7 +78,7 @@ class SCORE_DATASET(Dataset):
         self.info = dataset.getInfo(self.imgIdx)
         self.model = model
         self.temperature = temperature
-
+        self.transform = transform
 
     def __len__(self):
         return 1600
@@ -69,7 +88,7 @@ class SCORE_DATASET(Dataset):
         gp = GlobalProperties()
         camMat = gp.getCamMat()
         # Sampling for reprojection error image
-        sampling = cnn.stochasticSubSample(self.imgBGR, self.objInputSize, self.rgbInputSize)
+        sampling = cnn.stochasticSubSample(self.imgBGR, targetsize=self.objInputSize, patchsize=self.rgbInputSize)
         estObj = cnn.getCoordImg(self.imgBGR, sampling, self.rgbInputSize, self.model)
         # Produce GroundTruth Label
         poseGT = Hypothesis()
@@ -81,6 +100,7 @@ class SCORE_DATASET(Dataset):
             poseNoise = poseGT * getRandHyp(10, 100)
         data = cnn.getDiffMap(TYPE.our2cv([poseNoise.getRotation(), poseNoise.getTranslation()]),
                               estObj, sampling, camMat)
+        data = self.transform(data)
         label = -1 * self.temperature * max(poseGT.calcAngularDistance(poseNoise),
                                             np.linalg.norm(poseGT.getTranslation() - poseNoise.getTranslation())/10.0)
         return data, label
